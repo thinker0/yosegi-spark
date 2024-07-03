@@ -61,5 +61,9 @@ jars
 ## sbt build
 /project/build.properties
 
+## spark
+metastore_db
+spark-warehouse
+
 .bsp
 .scala-version
