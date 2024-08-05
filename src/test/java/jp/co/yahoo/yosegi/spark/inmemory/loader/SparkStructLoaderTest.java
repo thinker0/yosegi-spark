@@ -220,4 +220,55 @@ class SparkStructLoaderTest {
     // NOTE: assert
     assertStruct(values, vector, loadSize, fields);
   }
+
+  @ParameterizedTest
+  @MethodSource("D_spreadColumnBinaryMaker")
+  void T_load_Struct_checkDictionaryReset(final String binaryMakerClassName) throws IOException {
+    // NOTE: test data
+    // NOTE: expected
+    final String resource = "SparkStructLoaderTest/Struct_1.txt";
+    final List<Map<String, Object>> values = toValues(resource);
+    final int loadSize = values.size();
+
+    // NOTE: create ColumnBinary
+    final IColumn column = toSpreadColumn(resource);
+    final IColumnBinaryMaker binaryMaker = FindColumnBinaryMaker.get(binaryMakerClassName);
+    final ColumnBinary columnBinary = Utils.getColumnBinary(binaryMaker, column, null, null, null);
+
+    // NOTE: load
+    final List<StructField> fields =
+        Arrays.asList(
+            DataTypes.createStructField("bo", DataTypes.BooleanType, true),
+            DataTypes.createStructField("by", DataTypes.ByteType, true),
+            DataTypes.createStructField("bi", DataTypes.BinaryType, true),
+            DataTypes.createStructField("do", DataTypes.DoubleType, true),
+            DataTypes.createStructField("fl", DataTypes.FloatType, true),
+            DataTypes.createStructField("in", DataTypes.IntegerType, true),
+            DataTypes.createStructField("lo", DataTypes.LongType, true),
+            DataTypes.createStructField("sh", DataTypes.ShortType, true),
+            DataTypes.createStructField("st", DataTypes.StringType, true));
+    final DataType dataType = DataTypes.createStructType(fields);
+    final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
+    final ISpreadLoader<WritableColumnVector> loader = new SparkStructLoader(vector, loadSize);
+    binaryMaker.load(columnBinary, loader);
+
+    // NOTE: assert
+    assertStruct(values, vector, loadSize, fields);
+
+    // NOTE: Check if the vector is reset
+    final String resource2 = "SparkStructLoaderTest/Struct_2.txt";
+    final List<Map<String, Object>> values2 = toValues(resource2);
+    final int loadSize2 = values2.size();
+
+    vector.reset();
+    vector.reserve(loadSize2);
+    // NOTE: create ColumnBinary
+    final IColumn column2 = toSpreadColumn(resource2);
+    final IColumnBinaryMaker binaryMaker2 = FindColumnBinaryMaker.get(binaryMakerClassName);
+    final ColumnBinary columnBinary2 = Utils.getColumnBinary(binaryMaker2, column2, null, null, null);
+    final ISpreadLoader<WritableColumnVector> loader2 = new SparkStructLoader(vector, loadSize2);
+    binaryMaker.load(columnBinary2, loader2);
+    loader2.build();
+    assertStruct(values2, vector, loadSize2, fields);
+  }
 }

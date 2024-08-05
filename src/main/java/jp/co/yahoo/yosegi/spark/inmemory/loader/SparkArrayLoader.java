@@ -60,6 +60,10 @@ public class SparkArrayLoader implements IArrayLoader<WritableColumnVector> {
   public void loadChild(final ColumnBinary columnBinary, final int childLength) throws IOException {
     vector.getChild(0).reset();
     vector.getChild(0).reserve(childLength);
+    if (vector.getChild(0).hasDictionary()) {
+      vector.getChild(0).reserveDictionaryIds(0);
+      vector.getChild(0).setDictionary(null);
+    }
     SparkLoaderFactoryUtil.createLoaderFactory(vector.getChild(0))
         .create(columnBinary, childLength);
   }

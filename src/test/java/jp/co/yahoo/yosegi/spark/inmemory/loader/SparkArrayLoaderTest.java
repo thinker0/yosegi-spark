@@ -17,9 +17,12 @@ package jp.co.yahoo.yosegi.spark.inmemory.loader;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jp.co.yahoo.yosegi.binary.ColumnBinary;
+import jp.co.yahoo.yosegi.binary.ColumnBinaryMakerConfig;
 import jp.co.yahoo.yosegi.binary.FindColumnBinaryMaker;
 import jp.co.yahoo.yosegi.binary.maker.IColumnBinaryMaker;
 import jp.co.yahoo.yosegi.binary.maker.MaxLengthBasedArrayColumnBinaryMaker;
+import jp.co.yahoo.yosegi.binary.maker.OptimizedNullArrayDumpStringColumnBinaryMaker;
+import jp.co.yahoo.yosegi.binary.maker.OptimizedNullArrayStringColumnBinaryMaker;
 import jp.co.yahoo.yosegi.inmemory.IArrayLoader;
 import jp.co.yahoo.yosegi.message.parser.json.JacksonMessageReader;
 import jp.co.yahoo.yosegi.spark.test.Utils;
@@ -369,5 +372,47 @@ class SparkArrayLoaderTest {
 
     // NOTE: assert
     assertArray(values, vector, loadSize, elmDataType);
+  }
+
+  @ParameterizedTest
+  @MethodSource("D_arrayColumnBinaryMaker")
+  void T_load_String_checkDictionaryReset(final String binaryMakerClassName) throws IOException {
+    // NOTE: test data
+    // NOTE: expected
+    String resource = "SparkArrayLoaderTest/String_1.txt";
+    List<List<String>> values = toValues(resource);
+    int loadSize = values.size();
+
+    // NOTE: create ColumnBinary
+    IColumn column = toArrayColumn(resource);
+    IColumnBinaryMaker binaryMaker = FindColumnBinaryMaker.get(binaryMakerClassName);
+
+    ColumnBinaryMakerConfig config = new ColumnBinaryMakerConfig();
+    config.stringMakerClass = new OptimizedNullArrayStringColumnBinaryMaker();
+    ColumnBinary columnBinary = Utils.getColumnBinary(binaryMaker, column, config, null, null);
+
+    // NOTE: load
+    final DataType elmDataType = DataTypes.StringType;
+    final DataType dataType = DataTypes.createArrayType(elmDataType);
+    final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
+    IArrayLoader<WritableColumnVector> loader = new SparkArrayLoader(vector, loadSize);
+    binaryMaker.load(columnBinary, loader);
+
+    // NOTE: assert
+    assertArray(values, vector, loadSize, elmDataType);
+
+    // NOTE: Check if the vector is reset
+    String resource2 = "SparkArrayLoaderTest/String_2.txt";
+    List<List<String>> values2 = toValues(resource2);
+    int loadSize2 = values2.size();
+    IColumn column2 = toArrayColumn(resource2);
+    IColumnBinaryMaker binaryMaker2 = FindColumnBinaryMaker.get(binaryMakerClassName);
+    config.stringMakerClass = new OptimizedNullArrayDumpStringColumnBinaryMaker();
+    ColumnBinary columnBinary2 = Utils.getColumnBinary(binaryMaker2, column2, config, null, null);
+    vector.reset();
+    vector.reserve(loadSize2);
+    IArrayLoader<WritableColumnVector> loader2 = new SparkArrayLoader(vector, loadSize2);
+    binaryMaker.load(columnBinary2, loader2);
+    assertArray(values2, vector, loadSize2, elmDataType);
   }
 }
