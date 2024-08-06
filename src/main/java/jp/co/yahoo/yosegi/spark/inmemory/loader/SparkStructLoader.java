@@ -65,13 +65,21 @@ public class SparkStructLoader implements ISpreadLoader<WritableColumnVector> {
 
   @Override
   public WritableColumnVector build() throws IOException {
+    final StructType structType = (StructType) vector.dataType();
+    final String[] names = structType.fieldNames();
+    // NOTE: Fill unloaded columns with nulls.
+    for (int i = 0; i < names.length; i++) {
+      if (loaderFactoryMap.containsKey(names[i])) {
+        vector.getChild(i).putNulls(0, loadSize);
+      }
+    }
     return vector;
   }
 
   @Override
   public void loadChild(final ColumnBinary columnBinary, final int loadSize) throws IOException {
     if (loaderFactoryMap.containsKey(columnBinary.columnName)) {
-      loaderFactoryMap.get(columnBinary.columnName).create(columnBinary, loadSize);
+      loaderFactoryMap.remove(columnBinary.columnName).create(columnBinary, loadSize);
     } else {
       // FIXME:
     }
