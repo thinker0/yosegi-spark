@@ -25,10 +25,17 @@ import java.io.IOException;
 public class SparkUnionArrayLoader implements IUnionLoader<WritableColumnVector> {
   private final WritableColumnVector vector;
   private final int loadSize;
+  private boolean childLoaded;
 
   public SparkUnionArrayLoader(final WritableColumnVector vector, final int loadSize) {
     this.vector = vector;
     this.loadSize = loadSize;
+    this.vector.getChild(0).reset();
+    this.vector.getChild(0).reserve(0);
+    if (this.vector.getChild(0).hasDictionary()) {
+      this.vector.getChild(0).reserveDictionaryIds(0);
+      this.vector.getChild(0).setDictionary(null);
+    }
   }
 
   @Override
@@ -38,30 +45,33 @@ public class SparkUnionArrayLoader implements IUnionLoader<WritableColumnVector>
 
   @Override
   public void setNull(final int index) throws IOException {
-    vector.putNull(index);
+    // FIXME:
   }
 
   @Override
   public void finish() throws IOException {
-    //
+    // FIXME:
   }
 
   @Override
   public WritableColumnVector build() throws IOException {
+    if (!childLoaded) {
+      for (int i = 0; i < loadSize; i++) {
+        vector.putArray(i, 0, 0);
+      }
+    }
     return vector;
   }
 
   @Override
   public void setIndexAndColumnType(final int index, final ColumnType columnType) throws IOException {
     // FIXME:
-    if (columnType != ColumnType.ARRAY) {
-      vector.putNull(index);
-    }
   }
 
   @Override
   public void loadChild(final ColumnBinary columnBinary, final int childLoadSize) throws IOException {
     if (columnBinary.columnType == ColumnType.ARRAY) {
+      childLoaded = true;
       SparkLoaderFactoryUtil.createLoaderFactory(vector).create(columnBinary, childLoadSize);
     }
   }
