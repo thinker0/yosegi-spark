@@ -17,9 +17,11 @@ package jp.co.yahoo.yosegi.spark.reader;
 import jp.co.yahoo.yosegi.binary.ColumnBinary;
 import jp.co.yahoo.yosegi.inmemory.IRawConverter;
 import jp.co.yahoo.yosegi.spark.inmemory.SparkLoaderFactoryUtil;
+import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkEmptyLoader;
 import jp.co.yahoo.yosegi.spark.utils.PartitionColumnUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
+import org.apache.spark.sql.types.ArrayType;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
@@ -72,10 +74,10 @@ public class SparkColumnarBatchConverter implements IRawConverter<ColumnarBatch>
       isSet[index] = true;
       SparkLoaderFactoryUtil.createLoaderFactory(((WritableColumnVector) childColumns[index])).create(columnBinary, loadSize);
     }
-    // NOTE: null columns
+    // NOTE: Empty columns
     for (int i = 0; i < schema.length(); i++) {
       if (!isSet[i]) {
-        ((WritableColumnVector) childColumns[i]).putNulls(0, loadSize);
+        SparkEmptyLoader.load((WritableColumnVector) childColumns[i], loadSize);
       }
     }
     // NOTE: partitionColumns

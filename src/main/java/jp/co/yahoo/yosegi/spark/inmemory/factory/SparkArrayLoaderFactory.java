@@ -18,7 +18,7 @@ import jp.co.yahoo.yosegi.binary.ColumnBinary;
 import jp.co.yahoo.yosegi.inmemory.ILoader;
 import jp.co.yahoo.yosegi.inmemory.ILoaderFactory;
 import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkArrayLoader;
-import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkNullLoader;
+import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkEmptyArrayLoader;
 import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkRunLengthEncodingArrayLoader;
 import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkUnionArrayLoader;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
@@ -37,7 +37,7 @@ public class SparkArrayLoaderFactory implements ILoaderFactory<WritableColumnVec
       throws IOException {
     if (columnBinary == null) {
       // FIXME:
-      return new SparkNullLoader(vector, loadSize);
+      return new SparkEmptyArrayLoader(vector, loadSize);
     }
     switch (getLoadType(columnBinary, loadSize)) {
       case ARRAY:
@@ -47,8 +47,7 @@ public class SparkArrayLoaderFactory implements ILoaderFactory<WritableColumnVec
       case UNION:
         return new SparkUnionArrayLoader(vector, loadSize);
       default:
-        // FIXME:
-        return new SparkNullLoader(vector, loadSize);
+        return new SparkEmptyArrayLoader(vector, loadSize);
     }
   }
 }
