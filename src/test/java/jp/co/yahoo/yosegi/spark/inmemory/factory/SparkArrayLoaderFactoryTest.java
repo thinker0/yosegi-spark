@@ -19,7 +19,7 @@ import jp.co.yahoo.yosegi.binary.maker.DumpUnionColumnBinaryMaker;
 import jp.co.yahoo.yosegi.binary.maker.MaxLengthBasedArrayColumnBinaryMaker;
 import jp.co.yahoo.yosegi.inmemory.ILoader;
 import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkArrayLoader;
-import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkNullLoader;
+import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkEmptyArrayLoader;
 import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkRunLengthEncodingArrayLoader;
 import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkUnionArrayLoader;
 import jp.co.yahoo.yosegi.spark.test.Utils;
@@ -99,6 +99,6 @@ class SparkArrayLoaderFactoryTest {
     final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
     final ILoader loader = new SparkArrayLoaderFactory(vector).createLoader(columnBinary, loadSize);
 
-    assertTrue(loader instanceof SparkNullLoader);
+    assertTrue(loader instanceof SparkEmptyArrayLoader);
   }
 }
