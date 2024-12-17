@@ -14,7 +14,7 @@
  */
 package jp.co.yahoo.yosegi.spark.inmemory.loader;
 
-import jp.co.yahoo.yosegi.inmemory.ISequentialLoader;
+import jp.co.yahoo.yosegi.inmemory.ILoader;
 import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
 import org.apache.spark.sql.types.DataType;
@@ -38,8 +38,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.BooleanType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -51,8 +51,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.ByteType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -64,8 +64,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.BinaryType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -77,8 +77,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.DoubleType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -90,8 +90,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.FloatType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -103,8 +103,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.IntegerType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -116,8 +116,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.LongType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -129,8 +129,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.ShortType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);
@@ -142,8 +142,8 @@ class SparkNullLoaderTest {
     final int loadSize = 5;
     final DataType dataType = DataTypes.StringType;
     final OnHeapColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
-    final ISequentialLoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
-    loader.finish();
+    final ILoader<WritableColumnVector> loader = new SparkNullLoader(vector, loadSize);
+    loader.build();
 
     // NOTE: assert
     assertNull(vector, loadSize);

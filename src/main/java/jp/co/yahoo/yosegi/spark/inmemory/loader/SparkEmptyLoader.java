@@ -14,50 +14,24 @@
  */
 package jp.co.yahoo.yosegi.spark.inmemory.loader;
 
-import jp.co.yahoo.yosegi.inmemory.ILoader;
-import jp.co.yahoo.yosegi.inmemory.LoadType;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
+import org.apache.spark.sql.types.ArrayType;
+import org.apache.spark.sql.types.MapType;
+import org.apache.spark.sql.types.StructType;
 
 import java.io.IOException;
 
-public class SparkNullLoader implements ILoader<WritableColumnVector> {
-
-  private final WritableColumnVector vector;
-  private final int loadSize;
-
-  public SparkNullLoader(final WritableColumnVector vector, final int loadSize) {
-    this.vector = vector;
-    this.loadSize = loadSize;
-  }
-
-  @Override
-  public LoadType getLoaderType() {
-    return LoadType.NULL;
-  }
-
-  @Override
-  public int getLoadSize() {
-    return loadSize;
-  }
-
-  @Override
-  public void setNull(final int index) throws IOException {
-    // FIXME:
-  }
-
-  @Override
-  public void finish() throws IOException {
-    // FIXME:
-  }
-
-  @Override
-  public WritableColumnVector build() throws IOException {
-    vector.putNulls(0, loadSize);
-    return vector;
-  }
-
-  @Override
-  public boolean isLoadingSkipped() {
-    return true;
-  }
+public class SparkEmptyLoader {
+    public static void load(final WritableColumnVector vector, final int loadSize) throws IOException {
+        final Class klass = vector.dataType().getClass();
+        if (klass == ArrayType.class) {
+            new SparkEmptyArrayLoader(vector, loadSize).build();
+        } else if (klass == StructType.class) {
+            new SparkEmptyStructLoader(vector, loadSize).build();
+        } else if (klass == MapType.class) {
+            new SparkEmptyMapLoader(vector, loadSize).build();
+        } else {
+            new SparkNullLoader(vector, loadSize).build();
+        }
+    }
 }
