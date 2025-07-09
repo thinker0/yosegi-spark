@@ -17,6 +17,7 @@ package jp.co.yahoo.yosegi.spark.reader;
 import jp.co.yahoo.yosegi.binary.ColumnBinary;
 import jp.co.yahoo.yosegi.inmemory.IRawConverter;
 import jp.co.yahoo.yosegi.spark.inmemory.SparkLoaderFactoryUtil;
+import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkEmptyLoader;
 import jp.co.yahoo.yosegi.spark.utils.PartitionColumnUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
@@ -50,7 +51,7 @@ public class SparkColumnarBatchConverter implements IRawConverter<ColumnarBatch>
   @Override
   public ColumnarBatch convert(final List<ColumnBinary> raw, final int loadSize) throws IOException {
     // NOTE: initialize
-    for (int i = 0; i < childColumns.length; i++) {
+    for (int i = 0; i < schema.length(); i++) {
       // FIXME: how to initialize vector with dictionary.
       childColumns[i].reset();
       childColumns[i].reserve(loadSize);
@@ -71,10 +72,10 @@ public class SparkColumnarBatchConverter implements IRawConverter<ColumnarBatch>
       isSet[index] = true;
       SparkLoaderFactoryUtil.createLoaderFactory(childColumns[index]).create(columnBinary, loadSize);
     }
-    // NOTE: null columns
-    for (int i = 0; i < childColumns.length; i++) {
+    // NOTE: Empty columns
+    for (int i = 0; i < schema.length(); i++) {
       if (!isSet[i]) {
-        childColumns[i].putNulls(0, loadSize);
+        SparkEmptyLoader.load(childColumns[i], loadSize);
       }
     }
     // NOTE: partitionColumns
