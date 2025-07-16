@@ -38,7 +38,7 @@ public class SparkArrayLoader implements IArrayLoader<WritableColumnVector> {
 
   @Override
   public void setNull(final int index) throws IOException {
-    vector.putNull(index);
+    vector.putArray(index, 0, 0);
   }
 
   @Override

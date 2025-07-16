@@ -322,33 +322,24 @@ public class LoadTest {
       final int jIndex = ldfj.get(i).fieldIndex("aa");
       final int yIndex = ldfy.get(i).fieldIndex("aa");
       if (ldfj.get(i).isNullAt(jIndex)) {
-        if (ldfy.get(i).isNullAt(yIndex)) {
-          // NOTE: json:null, yosegi:null
-          assertTrue(ldfy.get(i).isNullAt(yIndex));
-        } else {
-          // FIXME: json:null, yosegi:[]
-          assertTrue(false);
-        }
+        // NOTE: json:null, yosegi:[]
+        assertEquals(0, ldfy.get(i).getList(yIndex).size());
       } else {
         if (ldfy.get(i).isNullAt(yIndex)) {
           // NOTE: json:[], yosegi:null
-          assertEquals(0, ldfj.get(i).getList(jIndex).size());
+          assertTrue(false);
         } else {
           final List<WrappedArray<Long>> ldfj2 = ldfj.get(i).getList(jIndex);
           final List<WrappedArray<Long>> ldfy2 = ldfy.get(i).getList(yIndex);
           for (int j = 0; j < ldfj2.size(); j++) {
             final WrappedArray<Long> waj = ldfj2.get(j);
             final WrappedArray<Long> way = ldfy2.get(j);
-            if (way == null) {
-              if (waj == null) {
-                // NOTE: json:[null], yosegi:[null]
-                assertNull(waj);
-              } else {
-                // NOTE: json:[[]], yosegi:[null]
-                assertEquals(0, waj.size());
-              }
+            if (waj == null) {
+              // NOTE: json:[null], yosegi:[[]]
+              assertEquals(0, way.size());
             } else {
               // NOTE: json:[[]], yosegi:[[]]
+              assertEquals(waj.size(), way.size());
               for (int k = 0; k < waj.size(); k++) {
                 assertEquals(waj.apply(k), way.apply(k));
               }
@@ -397,59 +388,28 @@ public class LoadTest {
       final int jIndex = ldfj.get(i).fieldIndex("as");
       final int yIndex = ldfy.get(i).fieldIndex("as");
       if (ldfj.get(i).isNullAt(jIndex)) {
-        if (ldfy.get(i).isNullAt(yIndex)) {
-          // NOTE: json:null, yosegi:null
-          assertTrue(ldfy.get(i).isNullAt(yIndex));
-        } else {
-          // FIXME: json:null, yosegi:[]
-          assertTrue(false);
-        }
+        // NOTE: json:null, yosegi:[]
+        assertEquals(0, ldfy.get(i).getList(yIndex).size());
       } else {
         if (ldfy.get(i).isNullAt(yIndex)) {
-          final List<Row> lrj = ldfj.get(i).getList(jIndex);
-          for (int j = 0; j < lrj.size(); j++) {
-            final Row rj = lrj.get(j);
-            if (rj == null) {
-              // NOTE: json:[null], yosegi:null
-              assertNull(rj);
-            } else {
-              // NOTE: json[as.field:null], yosegi:null
-              for (final StructField field : fields) {
-                final String name = field.name();
-                assertNull(rj.getAs(name));
-              }
-            }
-          }
+          assertTrue(false);
         } else {
           final List<Row> lrj = ldfj.get(i).getList(jIndex);
           final List<Row> lry = ldfy.get(i).getList(yIndex);
           for (int j = 0; j < lrj.size(); j++) {
             final Row rj = lrj.get(j);
             final Row ry = lry.get(j);
-            if (ry == null) {
-              if (rj == null) {
-                // NOTE: json:[null], yosegi:[null]
-                assertNull(rj);
-              } else {
-                // NOTE: json:[{}], yosegi:[null]
-                for (final StructField field : fields) {
-                  final String name = field.name();
-                  assertNull(rj.getAs(name));
-                }
+            if (rj == null) {
+              // NOTE: json:[null], yosegi:[{}]
+              for (final StructField field : fields) {
+                final String name = field.name();
+                assertNull(ry.getAs(name));
               }
             } else {
-              if (rj == null) {
-                // NOTE: json:[null], yosegi:[{}]
-                for (final StructField field : fields) {
-                  final String name = field.name();
-                  assertNull(ry.getAs(name));
-                }
-              } else {
-                // NOTE: json:[{}], yosegi:[{}]
-                for (final StructField field : fields) {
-                  final String name = field.name();
-                  assertEquals((Object) rj.getAs(name), (Object) ry.getAs(name));
-                }
+              // NOTE: json:[{}], yosegi:[{}]
+              for (final StructField field : fields) {
+                final String name = field.name();
+                assertEquals((Object) rj.getAs(name), (Object) ry.getAs(name));
               }
             }
           }
@@ -484,31 +444,12 @@ public class LoadTest {
       final int jIndex = ldfj.get(i).fieldIndex("am");
       final int yIndex = ldfy.get(i).fieldIndex("am");
       if (ldfj.get(i).isNullAt(jIndex)) {
-        if (ldfy.get(i).isNullAt(yIndex)) {
-          // NOTE: json:null, yosegi:null
-          assertTrue(ldfy.get(i).isNullAt(yIndex));
-        } else {
-          // FIXME: json:null, yosegi:[]
-          assertTrue(false);
-        }
+        // NOTE: json:null, yosegi:[]
+        assertEquals(0, ldfy.get(i).getList(yIndex).size());
       } else {
         if (ldfy.get(i).isNullAt(yIndex)) {
           // NOTE: json:[], yosegi:null
-          final List<Map<String, Integer>> lmj = ldfj.get(i).getList(jIndex);
-          for (int j = 0; j < lmj.size(); j++) {
-            final Map<String, Integer> mj = lmj.get(j);
-            if (mj == null) {
-              // NOTE: json:[null], yosegi:null
-              assertNull(mj);
-            } else {
-              // NOTE: json:[am.key:null], yosegi:null
-              final Iterator<String> iter = mj.keysIterator();
-              while (iter.hasNext()) {
-                final String key = iter.next();
-                assertNull(mj.get(key).get());
-              }
-            }
-          }
+          assertTrue(false);
         } else {
           // NOTE: json:[], yosegi:[]
           final List<Map<String, Integer>> lmj = ldfj.get(i).getList(jIndex);
@@ -516,38 +457,20 @@ public class LoadTest {
           for (int j = 0; j < lmj.size(); j++) {
             final Map<String, Integer> mj = lmj.get(j);
             final Map<String, Integer> my = lmy.get(j);
-            if (my == null) {
-              if (mj == null) {
-                // NOTE: json:[null], yosegi:[null]
-                assertNull(mj);
-              } else {
-                // NOTE: json:[{}], yosegi:[null]
-                final Iterator<String> iter = mj.keysIterator();
-                while (iter.hasNext()) {
-                  final String key = iter.next();
-                  assertNull(mj.get(key).get());
-                }
-              }
+            if (mj == null) {
+              // NOTE: json:[null], yosegi:[{}]
+              assertEquals(0, my.size());
             } else {
-              if (mj == null) {
-                // NOTE: json:[null], yosegi:[{}]
-                final Iterator<String> iter = my.keysIterator();
-                while (iter.hasNext()) {
-                  final String key = iter.next();
-                  assertNull(my.get(key).get());
-                }
-              } else {
-                // NOTE: json[{}], yosegi:[{}]
-                final Iterator<String> iter = mj.keysIterator();
-                while (iter.hasNext()) {
-                  final String key = iter.next();
-                  if (mj.get(key).get() == null) {
-                    // NOTE: json:[{key:null}], yosegi:[{key:not exist}]
-                    assertTrue(my.get(key).isEmpty());
-                  } else {
-                    // NOTE: json:[{key}], yosegi:[{key}]
-                    assertEquals(mj.get(key), my.get(key));
-                  }
+              // NOTE: json[{}], yosegi:[{}]
+              final Iterator<String> iter = mj.keysIterator();
+              while (iter.hasNext()) {
+                final String key = iter.next();
+                if (mj.get(key).get() == null) {
+                  // NOTE: json:[{key:null}], yosegi:[{key:not exist}]
+                  assertTrue(my.get(key).isEmpty());
+                } else {
+                  // NOTE: json:[{key}], yosegi:[{key}]
+                  assertEquals(mj.get(key), my.get(key));
                 }
               }
             }
