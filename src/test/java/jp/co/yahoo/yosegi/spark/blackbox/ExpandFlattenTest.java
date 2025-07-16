@@ -118,6 +118,14 @@ public class ExpandFlattenTest {
     final String resource = "blackbox/Expand_1.txt";
     createYosegiFile(resource);
 
+    // NOTE: dfy schema
+    final DataType a2Type = DataTypes.createArrayType(DataTypes.DoubleType, true);
+    final StructType dfyType =
+        DataTypes.createStructType(
+            Arrays.asList(
+                DataTypes.createStructField("id", DataTypes.LongType, true),
+                DataTypes.createStructField("ea1", DataTypes.LongType, true),
+                DataTypes.createStructField("a2", a2Type, true)));
     // NOTE: expand options
     final Map<String, String> options =
         new HashMap<String, String>() {
@@ -133,7 +141,7 @@ public class ExpandFlattenTest {
             .withColumn("ea1", explode(col("a1")))
             .orderBy(col("id").asc(), col("ea1").asc());
     final Dataset<Row> dfy =
-        loadYosegiFile(options, null).orderBy(col("id").asc(), col("ea1").asc());
+        loadYosegiFile(options, dfyType).orderBy(col("id").asc(), col("ea1").asc());
 
     dfj.printSchema();
     dfj.show(false);
@@ -165,6 +173,13 @@ public class ExpandFlattenTest {
     final String resource = "blackbox/Expand_2.txt";
     createYosegiFile(resource);
 
+    // NOTE: dfy schema
+    final StructType dfyType =
+        DataTypes.createStructType(
+            Arrays.asList(
+                DataTypes.createStructField("id", DataTypes.LongType, true),
+                DataTypes.createStructField("ea1", DataTypes.LongType, true),
+                DataTypes.createStructField("ea2", DataTypes.DoubleType, true)));
     // NOTE: expand options
     final Map<String, String> options =
         new HashMap<String, String>() {
@@ -180,7 +195,7 @@ public class ExpandFlattenTest {
             .withColumn("ea1", explode(col("a1")))
             .orderBy(col("id").asc(), col("ea1").asc());
     final Dataset<Row> dfy =
-        loadYosegiFile(options, null).orderBy(col("id").asc(), col("ea1").asc());
+        loadYosegiFile(options, dfyType).orderBy(col("id").asc(), col("ea1").asc());
 
     dfj.printSchema();
     dfj.show(false);
