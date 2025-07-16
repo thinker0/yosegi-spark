@@ -49,7 +49,7 @@ public class SparkRunLengthEncodingArrayLoader
 
   @Override
   public void setNull(final int index) throws IOException {
-    vector.putNull(index);
+    vector.putArray(index, 0, 0);
   }
 
   @Override
@@ -59,7 +59,7 @@ public class SparkRunLengthEncodingArrayLoader
   public void setNullAndRepetitions(
       final int startIndex, final int repetitions, final int rowGroupIndex) throws IOException {
     for (int i = 0; i < repetitions; i++) {
-      vector.putNull(rowId);
+      vector.putArray(rowId, 0, 0);
       rowId++;
     }
   }
@@ -83,6 +83,10 @@ public class SparkRunLengthEncodingArrayLoader
   public void loadChild(final ColumnBinary columnBinary, final int childLength) throws IOException {
     vector.getChild(0).reset();
     vector.getChild(0).reserve(childLength);
+    if (vector.getChild(0).hasDictionary()) {
+      vector.getChild(0).reserveDictionaryIds(0);
+      vector.getChild(0).setDictionary(null);
+    }
     SparkLoaderFactoryUtil.createLoaderFactory(vector.getChild(0))
         .create(columnBinary, childLength);
   }

@@ -85,6 +85,9 @@ public class SparkColumnarBatchReader implements IColumnarBatchReader {
   public void close() throws Exception {
     reader.close();
     for (int i = 0; i < childColumns.length; i++) {
+      if (childColumns[i] == null) {
+        continue;
+      }
       childColumns[i].close();
     }
   }

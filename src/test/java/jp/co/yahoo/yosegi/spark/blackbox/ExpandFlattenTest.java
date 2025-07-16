@@ -40,7 +40,7 @@ import static org.apache.spark.sql.functions.explode;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-public class ExpandFlatten {
+public class ExpandFlattenTest {
   private static SparkSession spark;
   private static SQLContext sqlContext;
   private static final String appName = "ExpandFlattenTest";
@@ -60,7 +60,11 @@ public class ExpandFlatten {
   }
 
   public String getTmpPath() {
-    return System.getProperty("java.io.tmpdir") + appName + ".yosegi";
+    String tmpdir = System.getProperty("java.io.tmpdir");
+    if (tmpdir.endsWith("/")) {
+      tmpdir = tmpdir.substring(0, tmpdir.length() - 1);
+    }
+    return tmpdir + "/" + appName + ".yosegi";
   }
 
   public Dataset<Row> loadJsonFile(final String resource, final StructType schema) {
@@ -231,9 +235,18 @@ public class ExpandFlatten {
             Arrays.asList(
                 DataTypes.createStructField("id", DataTypes.IntegerType, true),
                 DataTypes.createStructField("m1", mapType, true)));
+    // NOTE: dfy schema
+    final StructType dfyType =
+        DataTypes.createStructType(
+            Arrays.asList(
+                DataTypes.createStructField("id", DataTypes.IntegerType, true),
+                DataTypes.createStructField("m1k1", DataTypes.StringType, true),
+                DataTypes.createStructField("m1k2", DataTypes.StringType, true)
+            )
+        );
     // NOTE: load
     final Dataset<Row> dfj = loadJsonFile(resource, structType);
-    final Dataset<Row> dfy = loadYosegiFile(options, null);
+    final Dataset<Row> dfy = loadYosegiFile(options, dfyType);
 
     dfj.printSchema();
     dfj.show(false);
