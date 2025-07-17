@@ -118,8 +118,16 @@ public final class FilterConnectorFactory {
     dispatch.put(Or.class, (f) -> {
       Or filter = (Or)f;
       IExpressionNode result = new OrExpressionNode();
-      result.addChildNode(get(filter.left()));
-      result.addChildNode(get(filter.right()));
+      IExpressionNode left = get(filter.left());
+      if (Objects.isNull(left)) {
+        return null;
+      }
+      IExpressionNode right = get(filter.right());
+      if (Objects.isNull(right)) {
+        return null;
+      }
+      result.addChildNode(left);
+      result.addChildNode(right);
       return result;
     });
 
