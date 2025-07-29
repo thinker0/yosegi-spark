@@ -17,8 +17,8 @@ package jp.co.yahoo.yosegi.spark.inmemory.factory;
 import jp.co.yahoo.yosegi.binary.ColumnBinary;
 import jp.co.yahoo.yosegi.binary.maker.DumpSpreadColumnBinaryMaker;
 import jp.co.yahoo.yosegi.inmemory.ILoader;
+import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkEmptyMapLoader;
 import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkMapLoader;
-import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkNullLoader;
 import jp.co.yahoo.yosegi.spark.test.Utils;
 import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
@@ -64,6 +64,6 @@ class SparkMapLoaderFactoryTest {
     final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
     final ILoader loader = new SparkMapLoaderFactory(vector).createLoader(columnBinary, loadSize);
 
-    assertTrue(loader instanceof SparkNullLoader);
+    assertTrue(loader instanceof SparkEmptyMapLoader);
   }
 }
