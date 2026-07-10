@@ -32,6 +32,7 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.vectorized.ColumnarMap;
 import org.apache.spark.unsafe.types.UTF8String;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -386,5 +387,28 @@ class SparkMapLoaderTest {
 
     // NOTE: assert
     assertMap(values, vector, loadSize, valueType);
+  }
+
+  @Test
+  void T_emptyMapLoader_should_clear_previous_batch_values() throws IOException {
+    final int loadSize = 2;
+    final DataType valueType = DataTypes.StringType;
+    final DataType dataType = DataTypes.createMapType(DataTypes.StringType, valueType, true);
+    final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
+
+    vector.getChild(0).putByteArray(0, "k1".getBytes(StandardCharsets.UTF_8));
+    vector.getChild(1).putByteArray(0, "v1".getBytes(StandardCharsets.UTF_8));
+    vector.putArray(0, 0, 1);
+    vector.getChild(0).putByteArray(1, "k2".getBytes(StandardCharsets.UTF_8));
+    vector.getChild(1).putByteArray(1, "v2".getBytes(StandardCharsets.UTF_8));
+    vector.putArray(1, 1, 1);
+
+    SparkEmptyLoader.load(vector, loadSize);
+
+    for (int i = 0; i < loadSize; i++) {
+      assertFalse(vector.isNullAt(i));
+      final ColumnarMap cm = vector.getMap(i);
+      assertEquals(0, cm.numElements());
+    }
   }
 }

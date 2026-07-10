@@ -42,7 +42,7 @@ public class SparkEmptyMapLoader implements ILoader<WritableColumnVector> {
 
   @Override
   public void setNull(final int index) throws IOException {
-    // FIXME:
+    vector.putArray(index, 0, 0);
   }
 
   @Override
@@ -56,6 +56,9 @@ public class SparkEmptyMapLoader implements ILoader<WritableColumnVector> {
     vector.getChild(0).reserve(0);
     vector.getChild(1).reset();
     vector.getChild(1).reserve(0);
+    for (int i = 0; i < loadSize; i++) {
+      vector.putArray(i, 0, 0);
+    }
     return vector;
   }
 
