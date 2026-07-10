@@ -79,6 +79,9 @@ public class SparkMapLoader implements ISpreadLoader<WritableColumnVector> {
     int offset = 0;
     int count = 0;
     for (int i = 0; i < loadSize; i++) {
+      if (vector.isNullAt(i)) {
+        continue;
+      }
       for (int j = 0; j < childVectors.size(); j++) {
         if (childVectors.get(j).isNullAt(i)) {
           continue;
