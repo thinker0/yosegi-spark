@@ -13,8 +13,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>jp.co.yahoo.yosegi</groupId>
-    <artifactId>yosegi-spark_2.12</artifactId>
-    <version>2.0.7_spark-3.5-SNAPSHOT</version>
+    <artifactId>yosegi-spark_2.13</artifactId>
+    <version>2.0.7_spark-4.2-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>Yosegi Spark</name>
     <description>Yosegi Spark library.</description>
@@ -49,19 +49,19 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <target_jdk_version>1.8</target_jdk_version>
+        <target_jdk_version>17</target_jdk_version>
         <maven-surefire-plugin.version>3.0.0-M2</maven-surefire-plugin.version>
         <maven-surefire-report-plugin.version>${maven-surefire-plugin.version}</maven-surefire-report-plugin.version>
         <maven-clover2-plugin.version>4.0.6</maven-clover2-plugin.version>
         <buildtype>test</buildtype>
-        <spotbugs-maven-plugin.version>3.1.8</spotbugs-maven-plugin.version>
-        <spotbugs.version>3.1.9</spotbugs.version>
+        <spotbugs-maven-plugin.version>4.10.3.0</spotbugs-maven-plugin.version>
         <yosegi.base>2.0</yosegi.base>
         <yosegi.version>${yosegi.base}.13</yosegi.version>
-        <spark.base>3.5</spark.base>
-        <spark.version>${spark.base}.6</spark.version>
-        <scala.base>2.12</scala.base>
-        <scala.version>${scala.base}.20</scala.version>
+        <spark.base>4.2</spark.base>
+        <spark.version>${spark.base}.0</spark.version>
+        <scala.base>2.13</scala.base>
+        <scala.version>${scala.base}.18</scala.version>
+        <jackson.version>2.21.2</jackson.version>
     </properties>
 
     <dependencies>
@@ -69,16 +69,19 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.base}</artifactId>
             <version>${spark.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.base}</artifactId>
             <version>${spark.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>jp.co.yahoo.yosegi</groupId>
@@ -88,17 +91,17 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.19.1</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.19.1</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-scala_${scala.base}</artifactId>
-            <version>2.19.1</version>
+            <version>${jackson.version}</version>
         </dependency>
 
         <dependency>
@@ -143,16 +146,15 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.10.1</version>
+                <version>3.13.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <release>${target_jdk_version}</release>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>4.6.1</version>
+                <version>4.9.10</version>
                 <executions>
                     <execution>
                         <goals>
@@ -198,12 +200,12 @@
                 <version>3.3.2</version>
                 <configuration>
                     <show>package</show>
-                    <source>1.8</source>
+                    <source>${target_jdk_version}</source>
                     <encoding>UTF-8</encoding>
                     <docencoding>UTF-8</docencoding>
                     <charset>UTF-8</charset>
                     <links>
-                        <link>https://docs.oracle.com/javase/8/docs/api/</link>
+                        <link>https://docs.oracle.com/javase/17/docs/api/</link>
                     </links>
                 </configuration>
                 <executions>
@@ -263,7 +265,7 @@
                     <useSystemClassLoader>false</useSystemClassLoader>
                     <forkCount>1</forkCount>
                     <reuseForks>true</reuseForks>
-                    <argLine>@{surefireArgLine} -Xmx1536m -XX:MaxPermSize=512m</argLine>
+                    <argLine>@{surefireArgLine} -Xmx1536m</argLine>
                 </configuration>
                 <dependencies>
                     <dependency>
@@ -276,7 +278,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.6</version>
+                <version>0.8.13</version>
                 <executions>
                     <execution>
                         <id>jacoco-initialize</id>

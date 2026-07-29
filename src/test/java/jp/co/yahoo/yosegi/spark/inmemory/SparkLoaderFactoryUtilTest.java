@@ -26,12 +26,19 @@ import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkIntegerLoaderFactory;
 import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkLongLoaderFactory;
 import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkMapLoaderFactory;
 import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkShortLoaderFactory;
+import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkStructLoaderFactory;
+import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkVariantStructLoaderFactory;
+import jp.co.yahoo.yosegi.spark.v2.VariantStructUtil;
+
 import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.DecimalType;
+import org.apache.spark.sql.types.Metadata;
+import org.apache.spark.sql.types.MetadataBuilder;
 import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -41,6 +48,65 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SparkLoaderFactoryUtilTest {
+  @Test
+  void T_createLoaderFactory_VariantType_VariantExtractionStructVector() {
+    final int loadSize = 5;
+    final StructType physicalType =
+        new StructType(
+            new StructField[] {
+              new StructField(
+                  "0", DataTypes.BinaryType, true, createVariantMetadata("$.value")),
+              new StructField(
+                  "1", DataTypes.BinaryType, true, createVariantMetadata("$.metadata"))
+            });
+    final WritableColumnVector vector = new OnHeapColumnVector(loadSize, physicalType);
+    final ILoaderFactory<WritableColumnVector> loader =
+        SparkLoaderFactoryUtil.createLoaderFactory(vector, DataTypes.VariantType);
+
+    assertTrue(loader instanceof SparkVariantStructLoaderFactory);
+  }
+
+  @Test
+  void T_createLoaderFactory_VariantType_OrdinaryStructVector() {
+    final int loadSize = 5;
+    final StructType physicalType =
+        DataTypes.createStructType(
+            Arrays.asList(
+                DataTypes.createStructField("value", DataTypes.BinaryType, true),
+                DataTypes.createStructField("metadata", DataTypes.BinaryType, true)));
+    final WritableColumnVector vector = new OnHeapColumnVector(loadSize, physicalType);
+    final ILoaderFactory<WritableColumnVector> loader =
+        SparkLoaderFactoryUtil.createLoaderFactory(vector, DataTypes.VariantType);
+
+    assertTrue(loader instanceof SparkStructLoaderFactory);
+  }
+
+  @Test
+  void T_createLoaderFactory_StructType_StructVector() {
+    final int loadSize = 5;
+    final StructType physicalType =
+        DataTypes.createStructType(
+            Arrays.asList(
+                DataTypes.createStructField("value", DataTypes.BinaryType, true),
+                DataTypes.createStructField("metadata", DataTypes.BinaryType, true)));
+    final WritableColumnVector vector = new OnHeapColumnVector(loadSize, physicalType);
+    final ILoaderFactory<WritableColumnVector> loader =
+        SparkLoaderFactoryUtil.createLoaderFactory(vector, physicalType);
+
+    assertTrue(loader instanceof SparkStructLoaderFactory);
+  }
+
+  @Test
+  void T_createLoaderFactory_VariantType_NonStructVector() {
+    final int loadSize = 5;
+    final WritableColumnVector vector =
+        new OnHeapColumnVector(loadSize, DataTypes.BinaryType);
+    final ILoaderFactory<WritableColumnVector> loader =
+        SparkLoaderFactoryUtil.createLoaderFactory(vector, DataTypes.VariantType);
+
+    assertTrue(loader instanceof SparkBytesLoaderFactory);
+  }
+
   @Test
   void T_createLoaderFactory_ArrayType() {
     final int loadSize = 5;
@@ -168,7 +234,8 @@ class SparkLoaderFactoryUtilTest {
   void T_createLoaderFactory_MapType_1() {
     final int loadSize = 5;
     final DataType valueType = DataTypes.BooleanType;
-    final DataType dataType = DataTypes.createMapType(DataTypes.StringType, valueType, true);
+    final DataType dataType =
+        DataTypes.createMapType(DataTypes.StringType, valueType, true);
     final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
     final ILoaderFactory<WritableColumnVector> loader =
         SparkLoaderFactoryUtil.createLoaderFactory(vector);
@@ -180,14 +247,12 @@ class SparkLoaderFactoryUtilTest {
     final int loadSize = 5;
     final DataType elmDataType = DataTypes.BooleanType;
     final DataType valueType = DataTypes.createArrayType(elmDataType);
-    final DataType dataType = DataTypes.createMapType(DataTypes.StringType, valueType, true);
+    final DataType dataType =
+        DataTypes.createMapType(DataTypes.StringType, valueType, true);
     final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
     assertThrows(
         UnsupportedOperationException.class,
-        () -> {
-          final ILoaderFactory<WritableColumnVector> loader =
-              SparkLoaderFactoryUtil.createLoaderFactory(vector);
-        });
+        () -> SparkLoaderFactoryUtil.createLoaderFactory(vector));
   }
 
   @Test
@@ -205,28 +270,37 @@ class SparkLoaderFactoryUtilTest {
             DataTypes.createStructField("sh", DataTypes.ShortType, true),
             DataTypes.createStructField("st", DataTypes.StringType, true));
     final DataType valueType = DataTypes.createStructType(fields);
-    final DataType dataType = DataTypes.createMapType(DataTypes.StringType, valueType, true);
+    final DataType dataType =
+        DataTypes.createMapType(DataTypes.StringType, valueType, true);
     final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
     assertThrows(
         UnsupportedOperationException.class,
-        () -> {
-          final ILoaderFactory<WritableColumnVector> loader =
-              SparkLoaderFactoryUtil.createLoaderFactory(vector);
-        });
+        () -> SparkLoaderFactoryUtil.createLoaderFactory(vector));
   }
 
   @Test
   void T_createLoaderFactory_MapType_4() {
     final int loadSize = 5;
     final DataType value2Type = DataTypes.BooleanType;
-    final DataType valueType = DataTypes.createMapType(DataTypes.StringType, value2Type, true);
-    final DataType dataType = DataTypes.createMapType(DataTypes.StringType, valueType, true);
+    final DataType valueType =
+        DataTypes.createMapType(DataTypes.StringType, value2Type, true);
+    final DataType dataType =
+        DataTypes.createMapType(DataTypes.StringType, valueType, true);
     final WritableColumnVector vector = new OnHeapColumnVector(loadSize, dataType);
     assertThrows(
         UnsupportedOperationException.class,
-        () -> {
-          final ILoaderFactory<WritableColumnVector> loader =
-              SparkLoaderFactoryUtil.createLoaderFactory(vector);
-        });
+        () -> SparkLoaderFactoryUtil.createLoaderFactory(vector));
+  }
+
+  private static Metadata createVariantMetadata(final String path) {
+    final Metadata value =
+        new MetadataBuilder()
+            .putString(VariantStructUtil.PATH_METADATA_KEY, path)
+            .putBoolean(VariantStructUtil.FAIL_ON_ERROR_METADATA_KEY, true)
+            .putString(VariantStructUtil.TIME_ZONE_ID_METADATA_KEY, "UTC")
+            .build();
+    return new MetadataBuilder()
+        .putMetadata(VariantStructUtil.VARIANT_METADATA_KEY, value)
+        .build();
   }
 }

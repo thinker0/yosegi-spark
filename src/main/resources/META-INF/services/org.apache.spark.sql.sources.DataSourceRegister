@@ -12,5 +12,5 @@
 # express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 jp.co.yahoo.yosegi.spark.YosegiFileFormat
+jp.co.yahoo.yosegi.spark.v2.YosegiDataSourceV2

@@ -24,16 +24,28 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Decodes Yosegi data into Spark {@link ColumnarBatch} instances.
+ *
+ * <p>The reader owns the Yosegi {@code WrapReader}, Spark child vectors used to construct batches,
+ * and the input stream transferred to the Yosegi reader. The logical Spark schema and physical
+ * Yosegi schema may differ for Variant columns, so conversion is configured with both.
+ *
+ * <p>Lifecycle behavior is intentionally defensive. Initialization failure closes every resource
+ * allocated so far; {@link #close()} is idempotent; and cleanup continues after an individual close
+ * failure while preserving the primary exception. This is required for Spark task cancellation,
+ * retries, and executor failure paths where leaked vectors or streams can accumulate.
+ */
 public class SparkColumnarBatchReader implements IColumnarBatchReader {
 
   private final WrapReader<ColumnarBatch> reader;
   private final ColumnVector[] childColumns;
+  private boolean closed;
 
   public SparkColumnarBatchReader(
       final StructType partitionSchema,
@@ -46,21 +58,57 @@ public class SparkColumnarBatchReader implements IColumnarBatchReader {
       final Configuration config,
       final IExpressionNode node)
       throws IOException {
+    this(
+        partitionSchema,
+        partitionValue,
+        schema,
+        schema,
+        in,
+        fileLength,
+        start,
+        length,
+        config,
+        node);
+  }
+
+  public SparkColumnarBatchReader(
+      final StructType partitionSchema,
+      final InternalRow partitionValue,
+      final StructType schema,
+      final StructType physicalSchema,
+      final InputStream in,
+      final long fileLength,
+      final long start,
+      final long length,
+      final Configuration config,
+      final IExpressionNode node)
+      throws IOException {
     final StructField[] fields = schema.fields();
     childColumns = new ColumnVector[schema.length() + partitionSchema.length()];
-    final Map<String, Integer> keyIndexMap = new HashMap<String, Integer>();
-    for (int i = 0; i < fields.length; i++) {
-      keyIndexMap.put(fields[i].name(), i);
-      childColumns[i] = new OnHeapColumnVector(0, fields[i].dataType());
+    final Map<String, Integer> keyIndexMap = new HashMap<>();
+    WrapReader<ColumnarBatch> initializedReader = null;
+    try {
+      for (int i = 0; i < fields.length; i++) {
+        keyIndexMap.put(fields[i].name(), i);
+        childColumns[i] = new OnHeapColumnVector(0, fields[i].dataType());
+      }
+      final YosegiReader yosegiReader = new YosegiReader();
+      yosegiReader.setNewStream(in, fileLength, config, start, length);
+      yosegiReader.setBlockSkipIndex(node);
+      final SparkColumnarBatchConverter converter =
+          new SparkColumnarBatchConverter(
+              schema,
+              physicalSchema,
+              partitionSchema,
+              partitionValue,
+              keyIndexMap,
+              childColumns);
+      initializedReader = new WrapReader<>(yosegiReader, converter);
+    } catch (IOException | RuntimeException e) {
+      cleanupAfterInitializationFailure(in, e);
+      throw e;
     }
-    // NOTE: create reader
-    final YosegiReader yosegiReader = new YosegiReader();
-    yosegiReader.setNewStream(in, fileLength, config, start, length);
-    yosegiReader.setBlockSkipIndex(node);
-    final SparkColumnarBatchConverter converter =
-        new SparkColumnarBatchConverter(
-            schema, partitionSchema, partitionValue, keyIndexMap, childColumns);
-    reader = new WrapReader<>(yosegiReader, converter);
+    reader = initializedReader;
   }
 
   @Override
@@ -83,12 +131,30 @@ public class SparkColumnarBatchReader implements IColumnarBatchReader {
 
   @Override
   public void close() throws Exception {
-    reader.close();
-    for (int i = 0; i < childColumns.length; i++) {
-      if (childColumns[i] == null) {
-        continue;
-      }
-      childColumns[i].close();
+    if (closed) {
+      return;
     }
+    closed = true;
+
+    Exception failure = null;
+    failure = ReaderResourceCloser.close(failure, reader::close);
+    for (ColumnVector childColumn : childColumns) {
+      if (childColumn != null) {
+        failure = ReaderResourceCloser.close(failure, childColumn::close);
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  private void cleanupAfterInitializationFailure(final InputStream in, final Exception failure) {
+    Exception cleanupFailure = failure;
+    for (ColumnVector childColumn : childColumns) {
+      if (childColumn != null) {
+        cleanupFailure = ReaderResourceCloser.close(cleanupFailure, childColumn::close);
+      }
+    }
+    ReaderResourceCloser.close(cleanupFailure, in::close);
   }
 }

@@ -30,7 +30,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import scala.collection.Iterator;
 import scala.collection.Map;
-import scala.collection.mutable.WrappedArray;
+import scala.collection.Seq;
 
 import java.io.File;
 import java.io.IOException;
@@ -111,7 +111,7 @@ public class LoadTest {
   }
 
   @AfterAll
-  static void tearDownAll() {
+  static void tearDownAll() throws IOException{
     spark.close();
   }
 
@@ -329,11 +329,11 @@ public class LoadTest {
           // NOTE: json:[], yosegi:null
           assertTrue(false);
         } else {
-          final List<WrappedArray<Long>> ldfj2 = ldfj.get(i).getList(jIndex);
-          final List<WrappedArray<Long>> ldfy2 = ldfy.get(i).getList(yIndex);
+          final List<Seq<Long>> ldfj2 = ldfj.get(i).getList(jIndex);
+          final List<Seq<Long>> ldfy2 = ldfy.get(i).getList(yIndex);
           for (int j = 0; j < ldfj2.size(); j++) {
-            final WrappedArray<Long> waj = ldfj2.get(j);
-            final WrappedArray<Long> way = ldfy2.get(j);
+            final Seq<Long> waj = ldfj2.get(j);
+            final Seq<Long> way = ldfy2.get(j);
             if (waj == null) {
               // NOTE: json:[null], yosegi:[[]]
               assertEquals(0, way.size());
@@ -559,8 +559,8 @@ public class LoadTest {
           final Row rj = lrj.get(i).getStruct(ji1);
           final Row ry = lry.get(i).getStruct(yi1);
           for (final String name : fields) {
-            final WrappedArray<Object> waj = rj.getAs(name);
-            final WrappedArray<Object> way = ry.getAs(name);
+            final List<Object> waj = rj.getList(rj.fieldIndex(name));
+            final List<Object> way = ry.getList(ry.fieldIndex(name));
             if (waj == null) {
               // NOTE: json:sa.field:null
               if (way == null) {
@@ -573,7 +573,7 @@ public class LoadTest {
                 } else {
                   // NOTE: yosegi:sa.field:[null]
                   for (int j = 0; j < way.size(); j++) {
-                    assertNull(way.apply(j));
+                    assertNull(way.get(j));
                   }
                 }
               }
@@ -587,7 +587,7 @@ public class LoadTest {
                 } else {
                   // NOTE: json:sa.field:[null]
                   for (int j = 0; j < waj.size(); j++) {
-                    assertNull(waj.apply(j));
+                    assertNull(waj.get(j));
                   }
                 }
               } else {
@@ -600,13 +600,13 @@ public class LoadTest {
                   } else {
                     // NOTE: yosegi:sa.field:[null]
                     for (int j = 0; j < way.size(); j++) {
-                      assertNull(way.apply(j));
+                      assertNull(way.get(j));
                     }
                   }
                 } else {
                   // NOTE: json:sa.field:[]
                   for (int j = 0; j < waj.size(); j++) {
-                    assertEquals(waj.apply(j), way.apply(j));
+                    assertEquals(waj.get(j), way.get(j));
                   }
                 }
               }

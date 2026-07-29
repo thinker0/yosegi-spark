@@ -12,100 +12,138 @@
   limitations under the License. See accompanying LICENSE file.
 -->
 
-# Spark's quick start with Yosegi
+# Yosegi Spark quick start
 
-## Preparation
-We have a plan to create a docker environment of Spark test use, but current situation, you need to prepare Spark firstly.
+This guide shows the shortest path to reading Yosegi with the Spark 4.2
+DataSource V2 reader.
 
-- [Apache Spark](https://spark.apache.org/)
+For the complete runtime matrix and limitations, see
+[../COMPATIBILITY.md](../COMPATIBILITY.md). If you are moving an existing
+application from V1, read
+[../MIGRATION_V1_TO_V2.md](../MIGRATION_V1_TO_V2.md).
 
-## Yosegi's jars
-Get Yosegi's jar from Maven repository.It can be easily obtained from the following command.
+## Requirements
 
-	$ ./bin/get_jar.sh get
+- Java 17
+- Scala 2.13
+- Apache Spark 4.2
+- a Yosegi Spark build for this release line
 
-It is in the following path.
-```
-./jars/yosegi/latest/yosegi.jar
-```
+Make the Yosegi and Yosegi Spark jars available to Spark using your normal
+dependency or `--jars` configuration.
 
-Specify yosegi's jars for Spark's startup option "- jar".
-```
-$ ./bin/spark-shell --jars ./jars/yosegi/latest/yosegi.jar,./target/scala-2.11/yosegi-spark_2.11-1.0.jar
-```
+## Read a Yosegi dataset
 
-## Preparation of input data.
-In this example, CSV data is assumed to be input data.
-With this data as input, we create a table in Yosegi format and read data from the table.
+Start with the V2 provider name:
 
-Create the following csv file.In this example, to illustrate writing to and reading from the table, the data is a simple example.
-If you already have a table, you still have the input.
+```scala
+val df = spark.read
+  .format("yosegi-v2")
+  .load("/tmp/example.yosegi")
 
-```
-{"id":"X_0001","name":"AAA","age":20}
-{"id":"X_0002","name":"BBB","age":30}
-{"id":"X_0003","name":"CCC","age":32}
-{"id":"X_0004","name":"DDD","age":21}
-{"id":"X_0005","name":"EEE","age":28}
-{"id":"X_0006","name":"FFF","age":21}
+df.show()
 ```
 
-## Create yosegi file
+Select only the columns you need:
 
-Run Spark.
-Load json file and create yosegi file.
-
-```
-val sqlContext = new SQLContext(sc);
-val df = sqlContext.read.json("/tmp/example.json")
+```scala
+df.select("id", "name").show()
 ```
 
-JSON output looks like this.
+Filter normally through Spark:
 
-```
-scala> df.show()
-+---+------+----+
-|age|    id|name|
-+---+------+----+
-| 20|X_0001| AAA|
-| 30|X_0002| BBB|
-| 32|X_0003| CCC|
-| 21|X_0004| DDD|
-| 28|X_0005| EEE|
-| 21|X_0006| FFF|
-+---+------+----+
+```scala
+df.filter("age >= 20").show()
 ```
 
-Save the data frame created from JSON as a yosegi file.
+Supported predicates may be pushed into Yosegi. Spark retains residual
+predicates when the reader cannot safely evaluate them.
 
-```
-df.write.format("jp.co.yahoo.yosegi.spark.YosegiFileFormat").save("/tmp/example.yosegi")
-```
+To inspect the scan:
 
-## Read yosegi file
-
-Read as a data frame from yosegi file.
-
-```
-val sqlContext = new SQLContext(sc);
-val df = sqlContext.read.format("jp.co.yahoo.yosegi.spark.YosegiFileFormat" ).load( "/tmp/example.yosegi")
-df.show
+```scala
+df.filter("age >= 20").explain(true)
 ```
 
-The output looks like this.
+## Read partitioned data
 
-```
-scala> df.show()
-+----+------+---+
-|name|    id|age|
-+----+------+---+
-| AAA|X_0001| 20|
-| BBB|X_0002| 30|
-| CCC|X_0003| 32|
-| DDD|X_0004| 21|
-| EEE|X_0005| 28|
-| FFF|X_0006| 21|
-+----+------+---+
+For a Hive-style layout such as:
+
+```text
+/data/events/date=2026-08-12/hour=13/part-00000.yosegi
 ```
 
-# What if I want to know more?
+read the dataset directly:
+
+```scala
+val events = spark.read
+  .format("yosegi-v2")
+  .load("/data/events")
+```
+
+Or preserve the partition root while reading a subset:
+
+```scala
+val events = spark.read
+  .format("yosegi-v2")
+  .option("basePath", "/data/events")
+  .load("/data/events/date=2026-08-12")
+```
+
+Partition predicates can then be used normally:
+
+```scala
+events
+  .filter("date = DATE '2026-08-12' AND hour = 13")
+  .show()
+```
+
+## Read Spark Variant
+
+If a Yosegi column is exposed as Spark Variant, select the full value:
+
+```scala
+val df = spark.read
+  .format("yosegi-v2")
+  .load("/data/variant-events")
+
+df.createOrReplaceTempView("events")
+```
+
+```sql
+SELECT v
+FROM events
+```
+
+Or extract a path:
+
+```sql
+SELECT variant_get(v, '$.id', 'bigint')
+FROM events
+```
+
+Nested and array examples:
+
+```sql
+SELECT
+  variant_get(v, '$.user.profile.name', 'string'),
+  variant_get(v, '$.items[0]', 'string')
+FROM events
+```
+
+For pushdown rules, UNION behavior, special values, and limitations, see
+[variant.md](variant.md).
+
+## Writing Yosegi
+
+DataSource V2 Read 1.0 does not provide a V2 writer.
+
+Existing applications that write Yosegi should continue to use the existing V1
+write path. See [../MIGRATION_V1_TO_V2.md](../MIGRATION_V1_TO_V2.md).
+
+## Next steps
+
+- [Compatibility](../COMPATIBILITY.md)
+- [V1 to V2 migration](../MIGRATION_V1_TO_V2.md)
+- [Variant guide](variant.md)
+- [Project README](../README.md)

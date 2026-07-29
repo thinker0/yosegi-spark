@@ -29,6 +29,10 @@ import jp.co.yahoo.yosegi.message.parser.IParser;
 public final class SparkParserFactory{
 
   public static IParser get( final DataType schema , final InternalRow row , final int ordinal ) throws IOException{
+    if( row == null || row.isNullAt( ordinal ) ){
+      return new SparkNullParser();
+    }
+
     if( schema instanceof ArrayType ){
       ArrayType arrayType = (ArrayType)schema;
       ArrayData arrayData = (ArrayData)( row.getArray( ordinal ) );
@@ -57,6 +61,10 @@ public final class SparkParserFactory{
     if( schema instanceof ArrayType ){
       ArrayType arrayType = (ArrayType)schema;
       for( int ordinal = 0 ; ordinal < result.length ; ordinal++ ){
+        if( row.isNullAt( ordinal ) ){
+          result[ordinal] = new SparkNullParser();
+          continue;
+        }
         ArrayData arrayData = row.getArray( ordinal );
         result[ordinal] = new SparkArrayParser( arrayType , arrayData );
       }
@@ -64,6 +72,10 @@ public final class SparkParserFactory{
     else if( schema instanceof StructType ){
       StructType structType = (StructType)schema;
       for( int ordinal = 0 ; ordinal < result.length ; ordinal++ ){
+        if( row.isNullAt( ordinal ) ){
+          result[ordinal] = new SparkNullParser();
+          continue;
+        }
         InternalRow childRow = row.getStruct( ordinal , structType.fields().length );
         result[ordinal] = new SparkStructParser( structType , childRow );
       }
@@ -71,6 +83,10 @@ public final class SparkParserFactory{
     else if( schema instanceof MapType ){
       MapType mapType = (MapType)schema;
       for( int ordinal = 0 ; ordinal < result.length ; ordinal++ ){
+        if( row.isNullAt( ordinal ) ){
+          result[ordinal] = new SparkNullParser();
+          continue;
+        }
         MapData mapData = row.getMap( ordinal );
         result[ordinal] = new SparkMapParser( mapType , mapData );
       }

@@ -21,7 +21,8 @@ import jp.co.yahoo.yosegi.spark.inmemory.loader.SparkEmptyLoader;
 import jp.co.yahoo.yosegi.spark.utils.PartitionColumnUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
-import org.apache.spark.sql.types.ArrayType;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
@@ -32,6 +33,7 @@ import java.util.Map;
 
 public class SparkColumnarBatchConverter implements IRawConverter<ColumnarBatch> {
   private final StructType schema;
+  private final StructType physicalSchema;
   private final StructType partitionSchema;
   private final InternalRow partitionValue;
   private final ColumnVector[] childColumns;
@@ -43,7 +45,18 @@ public class SparkColumnarBatchConverter implements IRawConverter<ColumnarBatch>
       final InternalRow partitionValue,
       final Map<String, Integer> keyIndexMap,
       final ColumnVector[] childColumns) {
+    this(schema, schema, partitionSchema, partitionValue, keyIndexMap, childColumns);
+  }
+
+  public SparkColumnarBatchConverter(
+      final StructType schema,
+      final StructType physicalSchema,
+      final StructType partitionSchema,
+      final InternalRow partitionValue,
+      final Map<String, Integer> keyIndexMap,
+      final ColumnVector[] childColumns) {
     this.schema = schema;
+    this.physicalSchema = physicalSchema;
     this.partitionSchema = partitionSchema;
     this.partitionValue = partitionValue;
     this.keyIndexMap = keyIndexMap;
@@ -51,36 +64,38 @@ public class SparkColumnarBatchConverter implements IRawConverter<ColumnarBatch>
   }
 
   @Override
-  public ColumnarBatch convert(final List<ColumnBinary> raw, final int loadSize) throws IOException {
-    // NOTE: initialize
+  public ColumnarBatch convert(final List<ColumnBinary> raw, final int loadSize)
+      throws IOException {
     for (int i = 0; i < schema.length(); i++) {
-      // FIXME: how to initialize vector with dictionary.
-      ((WritableColumnVector) childColumns[i]).reset();
-      ((WritableColumnVector) childColumns[i]).reserve(loadSize);
-      if (((WritableColumnVector) childColumns[i]).hasDictionary()) {
-        ((WritableColumnVector) childColumns[i]).reserveDictionaryIds(0);
-        ((WritableColumnVector) childColumns[i]).setDictionary(null);
+      final WritableColumnVector vector = (WritableColumnVector) childColumns[i];
+      vector.reset();
+      vector.reserve(loadSize);
+      if (vector.hasDictionary()) {
+        vector.reserveDictionaryIds(0);
+        vector.setDictionary(null);
       }
     }
     final ColumnarBatch result = new ColumnarBatch(childColumns);
-    // NOTE: childColumns
     final boolean[] isSet = new boolean[childColumns.length];
-    for (int i = 0; i < raw.size(); i++) {
-      final ColumnBinary columnBinary = raw.get(i);
+    for (ColumnBinary columnBinary : raw) {
       if (!keyIndexMap.containsKey(columnBinary.columnName)) {
         continue;
       }
       final int index = keyIndexMap.get(columnBinary.columnName);
       isSet[index] = true;
-      SparkLoaderFactoryUtil.createLoaderFactory(((WritableColumnVector) childColumns[index])).create(columnBinary, loadSize);
+      final StructField outputField = schema.fields()[index];
+      final DataType physicalType = findPhysicalType(outputField.name(), outputField.dataType());
+      SparkLoaderFactoryUtil.createLoaderFactory(
+              (WritableColumnVector) childColumns[index],
+              outputField.dataType(),
+              physicalType)
+          .create(columnBinary, loadSize);
     }
-    // NOTE: Empty columns
     for (int i = 0; i < schema.length(); i++) {
       if (!isSet[i]) {
         SparkEmptyLoader.load((WritableColumnVector) childColumns[i], loadSize);
       }
     }
-    // NOTE: partitionColumns
     final ColumnVector[] partColumns =
         PartitionColumnUtil.createPartitionColumns(partitionSchema, partitionValue, loadSize);
     for (int i = schema.length(), n = 0; i < childColumns.length; i++, n++) {
@@ -88,5 +103,14 @@ public class SparkColumnarBatchConverter implements IRawConverter<ColumnarBatch>
     }
     result.setNumRows(loadSize);
     return result;
+  }
+
+  private DataType findPhysicalType(final String name, final DataType fallback) {
+    for (StructField field : physicalSchema.fields()) {
+      if (field.name().equals(name)) {
+        return field.dataType();
+      }
+    }
+    return fallback;
   }
 }

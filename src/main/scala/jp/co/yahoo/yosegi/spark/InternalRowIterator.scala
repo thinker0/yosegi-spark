@@ -16,14 +16,13 @@
  * limitations under the License.
  */
 package jp.co.yahoo.yosegi.spark
-
 import java.io.Closeable
 
 import jp.co.yahoo.yosegi.spark.reader.IColumnarBatchReader
 
 class InternalRowIterator( reader:IColumnarBatchReader ) extends Iterator[Object] with Closeable{
 
-  override def hasNext(): Boolean = {
+  override def hasNext: Boolean = {
     reader.hasNext()
   }
 
