@@ -8,7 +8,7 @@ jobs:
   build:
     docker:
       # specify the version you desire here
-      - image: circleci/openjdk:8u171-jdk
+      - image: cimg/openjdk:17.0
       
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -64,11 +64,11 @@ custom_filters:
   merge_only: &merge_only
     filters:
       branches:
-        only: "yosegi-2.0_spark-3.5"
+        only: "yosegi-2.0_spark-4.2"
   merge_ignore: &merge_ignore
     filters:
       branches:
-        ignore: "yosegi-2.0_spark-3.5"
+        ignore: "yosegi-2.0_spark-4.2"
 
 workflows:
   build-and-test:

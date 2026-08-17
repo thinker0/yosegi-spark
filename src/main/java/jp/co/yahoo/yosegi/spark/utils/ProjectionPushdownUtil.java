@@ -17,23 +17,60 @@
  */
 package jp.co.yahoo.yosegi.spark.utils;
 
-import org.apache.spark.sql.types.StructType;
+import jp.co.yahoo.yosegi.spark.v2.VariantStructUtil;
+
 import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 
-public final class ProjectionPushdownUtil{
+import java.util.ArrayList;
+import java.util.List;
 
-  public static String createProjectionPushdownJson( final StructType requiredSchema ){
-    StructField[] fields = requiredSchema.fields();
-    StringBuffer buffer = new StringBuffer();
-    buffer.append( "[" );
-    for( int i = 0 ; i < fields.length ; i++ ){
-      if( i != 0){
-        buffer.append( "," );
+public final class ProjectionPushdownUtil {
+  private ProjectionPushdownUtil() {}
+
+  public static String createProjectionPushdownJson(final StructType requiredSchema) {
+    final List<String> projections = new ArrayList<>();
+    for (StructField field : requiredSchema.fields()) {
+      if (field.dataType() instanceof StructType
+          && VariantStructUtil.isVariantStruct((StructType) field.dataType())) {
+        appendVariantProjections(projections, field);
+      } else {
+        projections.add(toJsonPath(field.name()));
       }
-      buffer.append( String.format( "[\"%s\"]" , fields[i].name() ) );
     }
-    buffer.append( "]" );
-    return buffer.toString();
+    return "[" + String.join(",", projections) + "]";
   }
 
+  private static void appendVariantProjections(
+      final List<String> projections, final StructField variantField) {
+    final StructType variantStruct = (StructType) variantField.dataType();
+    for (StructField extractedField : variantStruct.fields()) {
+      final String[] sourcePath =
+          VariantStructUtil.getPhysicalProjectionPath(extractedField.metadata());
+      final String[] projectionPath = new String[(sourcePath == null ? 0 : sourcePath.length) + 1];
+      projectionPath[0] = variantField.name();
+      if (sourcePath != null) {
+        System.arraycopy(sourcePath, 0, projectionPath, 1, sourcePath.length);
+      }
+      final String projection = toJsonPath(projectionPath);
+      if (!projections.contains(projection)) {
+        projections.add(projection);
+      }
+    }
+  }
+
+  private static String toJsonPath(final String... names) {
+    final StringBuilder builder = new StringBuilder("[");
+    for (int i = 0; i < names.length; i++) {
+      if (i > 0) {
+        builder.append(',');
+      }
+      builder.append('"').append(escapeJson(names[i])).append('"');
+    }
+    return builder.append(']').toString();
+  }
+
+  private static String escapeJson(final String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
 }

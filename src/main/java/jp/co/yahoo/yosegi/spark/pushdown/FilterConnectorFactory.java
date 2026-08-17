@@ -31,6 +31,20 @@ import jp.co.yahoo.yosegi.spread.expression.*;
 import jp.co.yahoo.yosegi.spread.column.filter.*;
 
 
+/**
+ * Translates supported Spark {@link Filter} objects to Yosegi expression nodes.
+ *
+ * <p>A {@code null} result means that the complete filter cannot be represented safely by the
+ * Yosegi expression layer. Callers must retain Spark-side evaluation in that case.
+ *
+ * <p>Compound filters are all-or-none at this translation boundary. {@code AND}, {@code OR}, and
+ * {@code NOT} return {@code null} when a required child is unsupported. In particular, building an
+ * {@code OR} or {@code NOT} from only the supported portion would be an unsafe block-skip hint and
+ * could remove rows that Spark should retain.
+ *
+ * <p>For DataSource V2 reads these expression nodes are optimization hints. Final Spark SQL
+ * semantics are preserved by residual filters managed by the scan builder.
+ */
 public final class FilterConnectorFactory {
   private static final Map<Class, OperatorFilterFactory> gtDispatch = new HashMap<>();
   private static final Map<Class, OperatorFilterFactory> geDispatch = new HashMap<>();
@@ -55,6 +69,7 @@ public final class FilterConnectorFactory {
     dispatch.put(GreaterThan.class, (f) -> {
       GreaterThan filter = (GreaterThan)f;
       Object value = filter.value();
+      if (Objects.isNull(value)) return null;
       OperatorFilterFactory factory = gtDispatch.get(value.getClass());
       if (Objects.isNull(factory)) return null;
       return new ExecuterNode(new StringExtractNode(filter.attribute()), factory.apply(value));
@@ -63,6 +78,7 @@ public final class FilterConnectorFactory {
     dispatch.put(GreaterThanOrEqual.class, (f) -> {
       GreaterThanOrEqual filter = (GreaterThanOrEqual)f;
       Object value = filter.value();
+      if (Objects.isNull(value)) return null;
       OperatorFilterFactory factory = geDispatch.get(value.getClass());
       if (Objects.isNull(factory)) return null;
       return new ExecuterNode(new StringExtractNode(filter.attribute()), factory.apply(value));
@@ -71,6 +87,7 @@ public final class FilterConnectorFactory {
     dispatch.put(LessThan.class, (f) -> {
       LessThan filter = (LessThan)f;
       Object value = filter.value();
+      if (Objects.isNull(value)) return null;
       OperatorFilterFactory factory = ltDispatch.get(value.getClass());
       if (Objects.isNull(factory)) return null;
       return new ExecuterNode(new StringExtractNode(filter.attribute()), factory.apply(value));
@@ -79,6 +96,7 @@ public final class FilterConnectorFactory {
     dispatch.put(LessThanOrEqual.class, (f) -> {
       LessThanOrEqual filter = (LessThanOrEqual)f;
       Object value = filter.value();
+      if (Objects.isNull(value)) return null;
       OperatorFilterFactory factory = leDispatch.get(value.getClass());
       if (Objects.isNull(factory)) return null;
       return new ExecuterNode(new StringExtractNode(filter.attribute()), factory.apply(value));
@@ -87,6 +105,7 @@ public final class FilterConnectorFactory {
     dispatch.put(EqualTo.class, (f) -> {
       EqualTo filter = (EqualTo)f;
       Object value = filter.value();
+      if (Objects.isNull(value)) return null;
       OperatorFilterFactory factory = eqDispatch.get(value.getClass());
       if (Objects.isNull(factory)) return null;
       return new ExecuterNode(new StringExtractNode(filter.attribute()), factory.apply(value));
@@ -109,9 +128,17 @@ public final class FilterConnectorFactory {
 
     dispatch.put(And.class, (f) -> {
       And filter = (And)f;
+      IExpressionNode left = get(filter.left());
+      if (Objects.isNull(left)) {
+        return null;
+      }
+      IExpressionNode right = get(filter.right());
+      if (Objects.isNull(right)) {
+        return null;
+      }
       IExpressionNode result = new AndExpressionNode();
-      result.addChildNode(get(filter.left()));
-      result.addChildNode(get(filter.right()));
+      result.addChildNode(left);
+      result.addChildNode(right);
       return result;
     });
 
@@ -133,8 +160,12 @@ public final class FilterConnectorFactory {
 
     dispatch.put(Not.class, (f) -> {
       Not filter = (Not)f;
+      IExpressionNode child = get(filter.child());
+      if (Objects.isNull(child)) {
+        return null;
+      }
       IExpressionNode result = new NotExpressionNode();
-      result.addChildNode(get(filter.child()));
+      result.addChildNode(child);
       return result;
     });
 
@@ -155,6 +186,12 @@ public final class FilterConnectorFactory {
 
   private FilterConnectorFactory() {}
 
+  /**
+   * Converts a Spark filter to a Yosegi expression when the complete expression is supported.
+   *
+   * @param filter Spark filter to translate
+   * @return a safe Yosegi expression node, or {@code null} when translation is unsupported
+   */
   public static IExpressionNode get(final Filter filter) {
     ExpressionNodeFactory factory = dispatch.get(filter.getClass());
     return (Objects.isNull(factory)) ? null : factory.apply(filter);

@@ -1,0 +1,4 @@
+{"row_id":1,"v":{"id":10,"name":"alice","user":{"profile":{"name":"alice-p"}},"items":[1,2,3],"users":[{"id":7},{"id":8}]}}
+{"row_id":2,"v":{"id":20,"name":"bob","user":{"profile":null},"items":[],"users":[{"id":9}]}}
+{"row_id":3,"v":{"id":null,"name":"charlie","user":null,"items":null,"users":[]}}
+{"row_id":4,"v":{"name":null,"items":[4],"users":null}}

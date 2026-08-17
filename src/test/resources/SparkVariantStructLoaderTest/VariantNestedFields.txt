@@ -1,0 +1,4 @@
+{"user":{"id":10,"profile":{"name":"alice"}}}
+{"user":{"id":20,"profile":null}}
+{"user":null}
+{"other":1}

@@ -27,25 +27,77 @@ import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkLongLoaderFactory;
 import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkMapLoaderFactory;
 import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkShortLoaderFactory;
 import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkStructLoaderFactory;
+import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkVariantLoaderFactory;
+import jp.co.yahoo.yosegi.spark.inmemory.factory.SparkVariantStructLoaderFactory;
+import jp.co.yahoo.yosegi.spark.v2.VariantStructUtil;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
 import org.apache.spark.sql.types.ArrayType;
+import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.DecimalType;
 import org.apache.spark.sql.types.MapType;
 import org.apache.spark.sql.types.StructType;
+import org.apache.spark.sql.types.VariantType;
 
 public class SparkLoaderFactoryUtil {
+
   private SparkLoaderFactoryUtil() {}
+
+  public static ILoaderFactory<WritableColumnVector> createLoaderFactory(
+      final WritableColumnVector vector, final DataType requestedType) {
+    return createLoaderFactory(vector, requestedType, vector.dataType());
+  }
+
+  public static ILoaderFactory<WritableColumnVector> createLoaderFactory(
+      final WritableColumnVector vector,
+      final DataType requestedType,
+      final DataType physicalType) {
+    if (vector == null) {
+      throw new IllegalArgumentException("vector must not be null.");
+    }
+    if (requestedType == null) {
+      throw new IllegalArgumentException("requestedType must not be null.");
+    }
+    if (physicalType == null) {
+      throw new IllegalArgumentException("physicalType must not be null.");
+    }
+
+    if (vector.dataType() instanceof VariantType) {
+      if (requestedType instanceof VariantType && physicalType instanceof StructType) {
+        return new SparkVariantLoaderFactory(vector, (StructType) physicalType);
+      }
+      throw new UnsupportedOperationException(
+          "VariantType requires a Yosegi Struct backing type, but found: " + physicalType);
+    }
+
+    if (vector.dataType() instanceof StructType
+        && VariantStructUtil.isVariantStruct((StructType) vector.dataType())) {
+      if (!(physicalType instanceof StructType)) {
+        throw new UnsupportedOperationException(
+            "Variant extraction requires a Yosegi Struct backing type, but found: "
+                + physicalType);
+      }
+      return new SparkVariantStructLoaderFactory(vector, (StructType) physicalType);
+    }
+
+    // Do not reinterpret an ordinary Struct as a Variant extraction merely because the logical
+    // requested type is VariantType. Extraction Structs are identified only by Spark metadata.
+    return createLoaderFactory(vector);
+  }
 
   public static ILoaderFactory<WritableColumnVector> createLoaderFactory(
       final WritableColumnVector vector) {
     if (vector == null) {
-      // FIXME: vector is null?
+      throw new IllegalArgumentException("vector must not be null.");
     }
-    final Class klass = vector.dataType().getClass();
+    final Class<?> klass = vector.dataType().getClass();
     if (klass == ArrayType.class) {
       return new SparkArrayLoaderFactory(vector);
     } else if (klass == StructType.class) {
+      final StructType structType = (StructType) vector.dataType();
+      if (VariantStructUtil.isVariantStruct(structType)) {
+        return new SparkVariantStructLoaderFactory(vector);
+      }
       return new SparkStructLoaderFactory(vector);
     } else if (klass == DataTypes.StringType.getClass()
         || klass == DataTypes.BinaryType.getClass()) {
@@ -56,7 +108,8 @@ public class SparkLoaderFactoryUtil {
       return new SparkByteLoaderFactory(vector);
     } else if (klass == DataTypes.ShortType.getClass()) {
       return new SparkShortLoaderFactory(vector);
-    } else if (klass == DataTypes.IntegerType.getClass()) {
+    } else if (klass == DataTypes.IntegerType.getClass()
+        || klass == DataTypes.DateType.getClass()) {
       return new SparkIntegerLoaderFactory(vector);
     } else if (klass == DataTypes.LongType.getClass()) {
       return new SparkLongLoaderFactory(vector);
@@ -64,7 +117,8 @@ public class SparkLoaderFactoryUtil {
       return new SparkFloatLoaderFactory(vector);
     } else if (klass == DataTypes.DoubleType.getClass()) {
       return new SparkDoubleLoaderFactory(vector);
-    } else if (klass == DataTypes.TimestampType.getClass()) {
+    } else if (klass == DataTypes.TimestampType.getClass()
+        || klass == DataTypes.TimestampNTZType.getClass()) {
       return new SparkLongLoaderFactory(vector);
     } else if (klass == DecimalType.class) {
       return new SparkDecimalLoaderFactory(vector);
@@ -73,8 +127,7 @@ public class SparkLoaderFactoryUtil {
         throw new UnsupportedOperationException(
             makeErrorMessage(vector) + ". Map key type is string only.");
       }
-      // FIXME: Map type does not support composite type values.
-      final Class valueClass = vector.getChild(1).dataType().getClass();
+      final Class<?> valueClass = vector.getChild(1).dataType().getClass();
       if (valueClass == ArrayType.class) {
         throw new UnsupportedOperationException(
             makeErrorMessage(vector) + ". Map type does not support array type values.");
@@ -91,6 +144,6 @@ public class SparkLoaderFactoryUtil {
   }
 
   private static String makeErrorMessage(final WritableColumnVector vector) {
-    return "Unsupported datatype : " + vector.dataType().toString();
+    return "Unsupported datatype : " + vector.dataType();
   }
 }

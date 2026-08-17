@@ -106,7 +106,7 @@ public class PartitionLoadTest {
   }
 
   @AfterAll
-  static void tearDownAll() {
+  static void tearDownAll() throws IOException{
     spark.close();
   }
 
